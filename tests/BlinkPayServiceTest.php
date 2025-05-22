@@ -54,4 +54,25 @@ class BlinkPayServiceTest extends TestCase
         $result = $this->service->getForex();
         $this->assertEquals($this->config['dollar_rate'], $result);
     }
+
+    public function testValidateCreditCardWithValidNumber()
+    {
+        $result = $this->service->validateCreditCard('4532015112830366');
+        $this->assertTrue($result);
+    }
+
+    public function testValidateCreditCardWithInvalidNumber()
+    {
+        $result = $this->service->validateCreditCard('4532015112830367');
+        $this->assertFalse($result);
+    }
+
+    public function testGetCardType()
+    {
+        $this->assertEquals('visa', $this->service->getCardType('4532015112830366'));
+        $this->assertEquals('mastercard', $this->service->getCardType('5555555555554444'));
+        $this->assertEquals('amex', $this->service->getCardType('378282246310005'));
+        $this->assertEquals('discover', $this->service->getCardType('6011111111111117'));
+        $this->assertEquals('unknown', $this->service->getCardType('1234567890123456'));
+    }
 } 

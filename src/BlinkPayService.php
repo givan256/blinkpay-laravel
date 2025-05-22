@@ -122,4 +122,89 @@ class BlinkPayService
         
         return $result !== false ? $result : '';
     }
+
+    public function processCreditCardPayment($cardData, $amount, $description)
+    {
+        $params = [
+            "username" => $this->username,
+            "password" => $this->password,
+            "api" => "processcreditcard",
+            "card_number" => $cardData['card_number'],
+            "expiry_month" => $cardData['expiry_month'],
+            "expiry_year" => $cardData['expiry_year'],
+            "cvv" => $cardData['cvv'],
+            "amount" => (int)$amount,
+            "narrative" => $description,
+            "reference" => $description,
+            "currency" => $cardData['currency'] ?? 'USD',
+            "card_holder_name" => $cardData['card_holder_name'],
+            "billing_address" => $cardData['billing_address'] ?? null,
+            "billing_city" => $cardData['billing_city'] ?? null,
+            "billing_country" => $cardData['billing_country'] ?? null,
+            "billing_postal_code" => $cardData['billing_postal_code'] ?? null,
+        ];
+
+        $response = $this->makeRequest($this->apiUrl, $params);
+        $jsonDecoded = json_decode($response, true);
+        
+        if (!empty($jsonDecoded) && !$jsonDecoded['error']) {
+            if (isset($jsonDecoded['status']) && $jsonDecoded['status'] == "PENDING") {
+                $reference = $jsonDecoded['reference_code'];
+                $status = $this->checkStatus($reference);
+                
+                while ($status == "PENDING") {
+                    $status = $this->checkStatus($reference);
+                    sleep(5);
+                }
+                
+                return ['status' => $status, 'message' => $response];
+            }
+        }
+        
+        return ['status' => 'FAILED', 'message' => $response];
+    }
+
+    public function validateCreditCard($cardNumber)
+    {
+        // Remove any non-digit characters
+        $cardNumber = preg_replace('/\D/', '', $cardNumber);
+        
+        // Check if the card number is valid using Luhn algorithm
+        $sum = 0;
+        $length = strlen($cardNumber);
+        $parity = $length % 2;
+        
+        for ($i = 0; $i < $length; $i++) {
+            $digit = $cardNumber[$i];
+            if ($i % 2 == $parity) {
+                $digit *= 2;
+                if ($digit > 9) {
+                    $digit -= 9;
+                }
+            }
+            $sum += $digit;
+        }
+        
+        return ($sum % 10 == 0);
+    }
+
+    public function getCardType($cardNumber)
+    {
+        $cardNumber = preg_replace('/\D/', '', $cardNumber);
+        
+        $patterns = [
+            'visa' => '/^4[0-9]{12}(?:[0-9]{3})?$/',
+            'mastercard' => '/^5[1-5][0-9]{14}$/',
+            'amex' => '/^3[47][0-9]{13}$/',
+            'discover' => '/^6(?:011|5[0-9]{2})[0-9]{12}$/',
+        ];
+        
+        foreach ($patterns as $type => $pattern) {
+            if (preg_match($pattern, $cardNumber)) {
+                return $type;
+            }
+        }
+        
+        return 'unknown';
+    }
 } 

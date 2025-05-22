@@ -103,4 +103,69 @@ class BlinkPayGatewayTest extends TestCase
         $this->assertEquals('SUCCESS', $result['status']);
         $this->assertEquals('Payment processed', $result['message']);
     }
+
+    public function testProcessCreditCardPaymentWithValidData()
+    {
+        $orderData = [
+            'order_id' => '123',
+            'amount' => 100,
+            'currency' => 'USD',
+            'card_number' => '4532015112830366',
+            'expiry_month' => '12',
+            'expiry_year' => '2025',
+            'cvv' => '123',
+            'card_holder_name' => 'John Doe',
+            'billing_address' => '123 Main St',
+            'billing_city' => 'New York',
+            'billing_country' => 'US',
+            'billing_postal_code' => '10001'
+        ];
+
+        $this->service->expects($this->once())
+            ->method('validateCreditCard')
+            ->with('4532015112830366')
+            ->willReturn(true);
+
+        $this->service->expects($this->once())
+            ->method('getCardType')
+            ->with('4532015112830366')
+            ->willReturn('visa');
+
+        $this->service->expects($this->once())
+            ->method('processCreditCardPayment')
+            ->with(
+                $orderData,
+                100,
+                'Order #123 - Amount: USD100'
+            )
+            ->willReturn(['status' => 'SUCCESS', 'message' => 'Payment processed']);
+
+        $result = $this->gateway->processCreditCardPayment($orderData);
+        
+        $this->assertEquals('SUCCESS', $result['status']);
+        $this->assertEquals('Payment processed', $result['message']);
+    }
+
+    public function testProcessCreditCardPaymentWithInvalidCard()
+    {
+        $orderData = [
+            'order_id' => '123',
+            'amount' => 100,
+            'currency' => 'USD',
+            'card_number' => '4532015112830367',
+            'expiry_month' => '12',
+            'expiry_year' => '2025',
+            'cvv' => '123'
+        ];
+
+        $this->service->expects($this->once())
+            ->method('validateCreditCard')
+            ->with('4532015112830367')
+            ->willReturn(false);
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Invalid credit card number');
+
+        $this->gateway->processCreditCardPayment($orderData);
+    }
 } 

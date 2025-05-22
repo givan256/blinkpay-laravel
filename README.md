@@ -31,6 +31,8 @@ BLINKPAY_CONVERT_TO_UGX=false
 
 ## Usage
 
+### Mobile Money Payments
+
 ```php
 use BlinkPay\Laravel\BlinkPayGateway;
 
@@ -43,7 +45,7 @@ class PaymentController extends Controller
         $this->blinkPay = $blinkPay;
     }
     
-    public function processPayment(Request $request)
+    public function processMobileMoneyPayment(Request $request)
     {
         try {
             $result = $this->blinkPay->processPayment([
@@ -61,26 +63,103 @@ class PaymentController extends Controller
 }
 ```
 
+### Credit Card Payments
+
+```php
+use BlinkPay\Laravel\BlinkPayGateway;
+
+class PaymentController extends Controller
+{
+    protected $blinkPay;
+    
+    public function __construct(BlinkPayGateway $blinkPay)
+    {
+        $this->blinkPay = $blinkPay;
+    }
+    
+    public function processCreditCardPayment(Request $request)
+    {
+        try {
+            $result = $this->blinkPay->processCreditCardPayment([
+                'order_id' => $request->order_id,
+                'amount' => $request->amount,
+                'currency' => $request->currency,
+                'card_number' => $request->card_number,
+                'expiry_month' => $request->expiry_month,
+                'expiry_year' => $request->expiry_year,
+                'cvv' => $request->cvv,
+                'card_holder_name' => $request->card_holder_name,
+                'billing_address' => $request->billing_address,
+                'billing_city' => $request->billing_city,
+                'billing_country' => $request->billing_country,
+                'billing_postal_code' => $request->billing_postal_code
+            ]);
+            
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+}
+```
+
+## Supported Payment Methods
+
+### Mobile Money
+- Supports various mobile money providers
+- Automatic phone number validation
+- Currency conversion to UGX (optional)
+
+### Credit Cards
+- Supports major card types (Visa, Mastercard, Amex, Discover)
+- Card number validation using Luhn algorithm
+- Automatic card type detection
+- Billing address support
+- Currency conversion to UGX (optional)
+
+## Response Format
+
+Both payment methods return a response in the following format:
+
+```json
+{
+    "status": "SUCCESS|FAILED|PENDING",
+    "message": "Response message from the payment gateway"
+}
+```
+
+## Error Handling
+
+The package throws exceptions for various error conditions:
+
+- Invalid phone number format
+- Invalid credit card number
+- Unsupported card type
+- API communication errors
+
+## Testing
+
+Run the test suite:
+
+```bash
+./vendor/bin/phpunit
+```
+
+## Security
+
+- All sensitive data is handled securely
+- Credit card validation before processing
+- Phone number validation and formatting
+- Secure API communication
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## Security
+
+If you discover any security related issues, please email security@yourdomain.com instead of using the issue tracker.
+
 ## License
 
-The MIT License (MIT)
-
-Copyright (c) 2024 BlinkPay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
