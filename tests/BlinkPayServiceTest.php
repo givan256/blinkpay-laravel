@@ -75,4 +75,38 @@ class BlinkPayServiceTest extends TestCase
         $this->assertEquals('discover', $this->service->getCardType('6011111111111117'));
         $this->assertEquals('unknown', $this->service->getCardType('1234567890123456'));
     }
+
+    public function testProcessCreditCardPayment()
+    {
+        $data = [
+            'amount' => 1000,
+            'currency' => 'UGX',
+            'narration' => 'Test payment',
+            'email' => 'test@example.com',
+            'name' => 'Test User',
+            'phone_number' => '256700000000',
+            'cancel_redirect_url' => 'https://example.com/cancel',
+            'success_redirect_url' => 'https://example.com/success',
+            'status_notification_url' => 'https://example.com/notify'
+        ];
+
+        $result = $this->service->processCreditCardPayment($data);
+        
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('request_id', $result);
+        $this->assertArrayHasKey('merchant_id', $result);
+    }
+
+    public function testProcessCreditCardPaymentWithMissingConfig()
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Online Banking is not configured!');
+
+        $data = [
+            'amount' => 1000,
+            'email' => 'test@example.com'
+        ];
+
+        $this->service->processCreditCardPayment($data);
+    }
 } 

@@ -123,45 +123,54 @@ class BlinkPayService
         return $result !== false ? $result : '';
     }
 
-    public function processCreditCardPayment($cardData, $amount, $description)
+    public function processCreditCardPayment(array $data)
     {
+        $merchantId = config('blinkpay.merchant_id');
+        $merchantPassword = config('blinkpay.merchant_password');
+        $apiUrl = config('blinkpay.banking_api_url');
+        
+        if (!$merchantId || !$merchantPassword || !$apiUrl) {
+            throw new \Exception('Online Banking is not configured!');
+        }
+
+        $amount = (int)$data['amount'];
+        $currencyCode = $data['currency'] ?? 'UGX';
+        $narration = $data['narration'];
+        $emailAddress = $data['email'];
+        $names = $data['name'] ?? '';
+        $phoneNumber = $data['phone_number'] ?? '';
+        $cancelRedirectUrl = $data['cancel_redirect_url'];
+        $successRedirectUrl = $data['success_redirect_url'];
+        $statusNotificationUrl = $data['status_notification_url'];
+
+        // Generate request ID using SHA1 hash
+        $concatenation = $merchantId . '|' . $amount . '|' . $currencyCode . '|' . 
+                        $narration . '|' . $names . '|' . $phoneNumber . '|' . 
+                        $emailAddress . '|' . $cancelRedirectUrl . '|' . 
+                        $successRedirectUrl . '|' . $statusNotificationUrl . '|' . 
+                        $merchantPassword;
+        
+        $requestId = sha1($concatenation);
+
+        // Prepare request parameters
         $params = [
-            "username" => $this->username,
-            "password" => $this->password,
-            "api" => "processcreditcard",
-            "card_number" => $cardData['card_number'],
-            "expiry_month" => $cardData['expiry_month'],
-            "expiry_year" => $cardData['expiry_year'],
-            "cvv" => $cardData['cvv'],
-            "amount" => (int)$amount,
-            "narrative" => $description,
-            "reference" => $description,
-            "currency" => $cardData['currency'] ?? 'USD',
-            "card_holder_name" => $cardData['card_holder_name'],
-            "billing_address" => $cardData['billing_address'] ?? null,
-            "billing_city" => $cardData['billing_city'] ?? null,
-            "billing_country" => $cardData['billing_country'] ?? null,
-            "billing_postal_code" => $cardData['billing_postal_code'] ?? null,
+            'currency_code' => $currencyCode,
+            'amount' => $amount,
+            'narration' => $narration,
+            'names' => $names,
+            'phone_number' => $phoneNumber,
+            'email_address' => $emailAddress,
+            'cancel_redirect_url' => $cancelRedirectUrl,
+            'success_redirect_url' => $successRedirectUrl,
+            'status_notification_url' => $statusNotificationUrl,
+            'merchant_id' => $merchantId,
+            'request_id' => $requestId
         ];
 
-        $response = $this->makeRequest($this->apiUrl, $params);
-        $jsonDecoded = json_decode($response, true);
+        // Make API request
+        $response = $this->makeRequest($apiUrl, $params, 'POST');
         
-        if (!empty($jsonDecoded) && !$jsonDecoded['error']) {
-            if (isset($jsonDecoded['status']) && $jsonDecoded['status'] == "PENDING") {
-                $reference = $jsonDecoded['reference_code'];
-                $status = $this->checkStatus($reference);
-                
-                while ($status == "PENDING") {
-                    $status = $this->checkStatus($reference);
-                    sleep(5);
-                }
-                
-                return ['status' => $status, 'message' => $response];
-            }
-        }
-        
-        return ['status' => 'FAILED', 'message' => $response];
+        return $response;
     }
 
     public function validateCreditCard($cardNumber)

@@ -33,25 +33,13 @@ class BlinkPayGateway
     }
     
 
-    public function processCreditCardPayment($orderData)
+    public function processCreditCardPayment(array $data)
     {
-        if (!$this->service->validateCreditCard($orderData['card_number'])) {
-            throw new \Exception('Invalid credit card number');
+        try {
+            $result = $this->service->processCreditCardPayment($data);
+            return $result;
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
-
-        $cardType = $this->service->getCardType($orderData['card_number']);
-        if ($cardType === 'unknown') {
-            throw new \Exception('Unsupported card type');
-        }
-
-        $amount = $orderData['amount'];
-        if ($this->convertToUGX) {
-            $exchangeRate = $this->service->getForex();
-            $amount = $exchangeRate * $amount;
-        }
-
-        $description = "Order #{$orderData['order_id']} - Amount: {$orderData['currency']}{$orderData['amount']}";
-        
-        return $this->service->processCreditCardPayment($orderData, $amount, $description);
     }
 } 

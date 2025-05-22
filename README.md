@@ -21,12 +21,15 @@ php artisan vendor:publish --provider="BlinkPay\Laravel\BlinkPayServiceProvider"
 Add the following to your `.env` file:
 
 ```env
-BLINKPAY_USERNAME=your_username
-BLINKPAY_PASSWORD=your_password
-BLINKPAY_API_URL=your_api_url
-BLINKPAY_DOLLAR_RATE=default_exchange_rate
-BLINKPAY_OPENEXCHANGE_KEY=your_openexchange_key
-BLINKPAY_CONVERT_TO_UGX=false
+BLINK_PAYMENTS_USERNAME=your_username
+BLINK_PAYMENTS_PASSWORD=your_password
+BLINK_PAYMENTS_MERCHANT_ID=your_merchant_id
+BLINK_PAYMENTS_MERCHANT_PASSWORD=your_merchant_password
+BLINK_PAYMENTS_API_URL=your_api_url
+BLINK_PAYMENTS_BANKING_API_URL=your_banking_api_url
+BLINK_PAYMENTS_DEFAULT_EXCHANGE_RATE=3700
+BLINK_PAYMENTS_EXCHANGE_RATE_KEY=your_exchange_rate_key
+BLINK_PAYMENTS_CONVERT_TO_UGX=false
 ```
 
 ## Usage

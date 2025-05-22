@@ -17,7 +17,7 @@ class BlinkPayGatewayTest extends TestCase
         parent::setUp();
         
         $this->service = $this->createMock(BlinkPayService::class);
-        $this->gateway = new BlinkPayGateway($this->service, false);
+        $this->gateway = new BlinkPayGateway($this->service);
     }
 
     public function testProcessPaymentWithValidData()
@@ -167,5 +167,45 @@ class BlinkPayGatewayTest extends TestCase
         $this->expectExceptionMessage('Invalid credit card number');
 
         $this->gateway->processCreditCardPayment($orderData);
+    }
+
+    public function testProcessCreditCardPayment()
+    {
+        $data = [
+            'amount' => 1000,
+            'email' => 'test@example.com'
+        ];
+
+        $expectedResponse = [
+            'request_id' => 'abc123',
+            'merchant_id' => 'merchant123'
+        ];
+
+        $this->service->expects($this->once())
+            ->method('processCreditCardPayment')
+            ->with($data)
+            ->willReturn($expectedResponse);
+
+        $result = $this->gateway->processCreditCardPayment($data);
+        
+        $this->assertEquals($expectedResponse, $result);
+    }
+
+    public function testProcessCreditCardPaymentWithError()
+    {
+        $data = [
+            'amount' => 1000,
+            'email' => 'test@example.com'
+        ];
+
+        $this->service->expects($this->once())
+            ->method('processCreditCardPayment')
+            ->with($data)
+            ->willThrowException(new \Exception('Test error'));
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Test error');
+
+        $this->gateway->processCreditCardPayment($data);
     }
 } 
