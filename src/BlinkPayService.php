@@ -8,8 +8,11 @@ class BlinkPayService
     protected $username;
     protected $password;
     protected $apiUrl;
-    protected $exchangeRate;
-    protected $openExchangeRatesKey;
+    protected $bankingApiUrl;
+    protected $merchantId;
+    protected $merchantPassword;
+    protected $defaultExchangeRate;
+    protected $exchangeRateKey;
 
     public function __construct(array $config)
     {
@@ -17,8 +20,11 @@ class BlinkPayService
         $this->username = $config['username'];
         $this->password = $config['password'];
         $this->apiUrl = $config['api_url'];
-        $this->exchangeRate = $config['dollar_rate'];
-        $this->openExchangeRatesKey = $config['openexchangerates_key'];
+        $this->bankingApiUrl = $config['banking_api_url'];
+        $this->merchantId = $config['merchant_id'];
+        $this->merchantPassword = $config['merchant_password'];
+        $this->defaultExchangeRate = $config['default_exchange_rate'];
+        $this->exchangeRateKey = $config['exchange_rate_key'];
     }
 
     public function makePayment($phoneNumber, $amount, $description)
@@ -74,10 +80,10 @@ class BlinkPayService
 
     public function getForex()
     {
-        $exchangeRate = $this->exchangeRate;
+        $exchangeRate = $this->defaultExchangeRate;
         
         try {
-            $url = 'https://openexchangerates.org/api/latest.json?app_id=' . $this->openExchangeRatesKey . '&symbols=UGX';
+            $url = 'https://openexchangerates.org/api/latest.json?app_id=' . $this->exchangeRateKey . '&symbols=UGX';
             $contents = file_get_contents($url);
             $resp = json_decode($contents);
             $exchangeRate = $resp->rates->UGX;
@@ -111,66 +117,62 @@ class BlinkPayService
     {
         $options = [
             'http' => [
-                'header' => "Content-type: application/json\r\n",
-                'method' => 'POST',
-                'content' => json_encode($data)
+                'header'  => "Content-type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($data),
+                'ignore_errors' => true
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false
             ]
         ];
-        
+
         $context = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
-        
-        return $result !== false ? $result : '';
-    }
 
-    public function processCreditCardPayment(array $data)
-    {
-        $merchantId = config('blinkpay.merchant_id');
-        $merchantPassword = config('blinkpay.merchant_password');
-        $apiUrl = config('blinkpay.banking_api_url');
-        
-        if (!$merchantId || !$merchantPassword || !$apiUrl) {
-            throw new \Exception('Online Banking is not configured!');
+        if ($result === FALSE) {
+            throw new \Exception('Failed to make request to BlinkPay API');
         }
 
-        $amount = (int)$data['amount'];
-        $currencyCode = $data['currency'] ?? 'UGX';
-        $narration = $data['narration'];
-        $emailAddress = $data['email'];
-        $names = $data['name'] ?? '';
-        $phoneNumber = $data['phone_number'] ?? '';
-        $cancelRedirectUrl = $data['cancel_redirect_url'];
-        $successRedirectUrl = $data['success_redirect_url'];
-        $statusNotificationUrl = $data['status_notification_url'];
+        return json_decode($result, true);
+    }
 
-        // Generate request ID using SHA1 hash
-        $concatenation = $merchantId . '|' . $amount . '|' . $currencyCode . '|' . 
-                        $narration . '|' . $names . '|' . $phoneNumber . '|' . 
-                        $emailAddress . '|' . $cancelRedirectUrl . '|' . 
-                        $successRedirectUrl . '|' . $statusNotificationUrl . '|' . 
-                        $merchantPassword;
-        
-        $requestId = sha1($concatenation);
-
-        // Prepare request parameters
-        $params = [
-            'currency_code' => $currencyCode,
-            'amount' => $amount,
-            'narration' => $narration,
-            'names' => $names,
-            'phone_number' => $phoneNumber,
-            'email_address' => $emailAddress,
-            'cancel_redirect_url' => $cancelRedirectUrl,
-            'success_redirect_url' => $successRedirectUrl,
-            'status_notification_url' => $statusNotificationUrl,
-            'merchant_id' => $merchantId,
-            'request_id' => $requestId
+    public function processPayment($orderData)
+    {
+        $data = [
+            'username' => $this->username,
+            'password' => $this->password,
+            'merchant_id' => $this->merchantId,
+            'merchant_password' => $this->merchantPassword,
+            'phone_number' => $orderData['phone_number'],
+            'amount' => $orderData['amount'],
+            'narration' => $orderData['narration'] ?? 'Payment',
+            'exchange_rate' => $this->defaultExchangeRate
         ];
 
-        // Make API request
-        $response = $this->makeRequest($apiUrl, $params, 'POST');
-        
-        return $response;
+        return $this->makeRequest($this->apiUrl, $data);
+    }
+
+    public function processCreditCardPayment($data)
+    {
+        $requestData = [
+            'username' => $this->username,
+            'password' => $this->password,
+            'merchant_id' => $this->merchantId,
+            'merchant_password' => $this->merchantPassword,
+            'amount' => $data['amount'],
+            'email' => $data['email'],
+            'name' => $data['name'],
+            'phone_number' => $data['phone_number'],
+            'narration' => $data['narration'] ?? 'Payment',
+            'cancel_redirect_url' => $data['cancel_redirect_url'],
+            'success_redirect_url' => $data['success_redirect_url'],
+            'status_notification_url' => $data['status_notification_url'],
+            'exchange_rate' => $this->defaultExchangeRate
+        ];
+
+        return $this->makeRequest($this->bankingApiUrl, $requestData);
     }
 
     public function validateCreditCard($cardNumber)
