@@ -38,6 +38,5 @@
     "prefer-stable": true,
     "conflict": {
         "laravel/framework": "<8.0"
-    },
-    "license": "MIT"
+    }
 } 
