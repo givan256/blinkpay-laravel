@@ -20,6 +20,9 @@ class BlinkPayGateway
     
     public function processPayment(array $orderData)
     {
+        // Ensure orderData is properly formatted
+        $orderData = $this->validateAndFormatData($orderData);
+        
         if ($this->convertToUgx) {
             $orderData['amount'] = $this->convertToUgx($orderData['amount'], $orderData['currency'] ?? 'USD');
             $orderData['currency'] = 'UGX';
@@ -39,6 +42,9 @@ class BlinkPayGateway
     
     public function processCreditCardPayment(array $data)
     {
+        // Ensure data is properly formatted
+        $data = $this->validateAndFormatData($data);
+        
         if ($this->convertToUgx) {
             $data['amount'] = $this->convertToUgx($data['amount'], $data['currency'] ?? 'USD');
             $data['currency'] = 'UGX';
@@ -61,5 +67,34 @@ class BlinkPayGateway
         
         // Convert to UGX using the default exchange rate
         return $amount * config('blinkpay.default_exchange_rate', 3700);
+    }
+
+    protected function validateAndFormatData(array $data)
+    {
+        // Ensure all required fields are present
+        $required = ['amount', 'order_id'];
+        foreach ($required as $field) {
+            if (!isset($data[$field])) {
+                throw new \Exception("Missing required field: {$field}");
+            }
+        }
+
+        // If data contains JSON strings, decode them
+        foreach ($data as $key => $value) {
+            if (is_string($value) && $this->isJson($value)) {
+                $data[$key] = json_decode($value, true);
+            }
+        }
+
+        return $data;
+    }
+
+    protected function isJson($string)
+    {
+        if (!is_string($string)) {
+            return false;
+        }
+        json_decode($string);
+        return (json_last_error() === JSON_ERROR_NONE);
     }
 } 

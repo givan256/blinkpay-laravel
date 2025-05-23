@@ -29,22 +29,33 @@ class BlinkPayService
 
     public function makePayment($phoneNumber, $amount, $description)
     {
+        // Ensure phone number is properly formatted as a string
+        $phoneNumber = (string) $this->formatPhoneNumber($phoneNumber);
+        
+        // Convert amount to UGX using the exchange rate
+        $exchangeRate = $this->getForex();
+        $amountInUGX = (int)ceil($amount * $exchangeRate);
+        
+        // Ensure minimum amount requirement
+        if ($amountInUGX < 500) {
+            throw new \Exception('Minimum deposit amount must be at least 500 UGX');
+        }
+        
         $params = [
             "username" => $this->username,
             "password" => $this->password,
             "api" => "depositmobilemoney",
             "msisdn" => $phoneNumber,
-            "amount" => (int)$amount,
+            "amount" => $amountInUGX,
             "narrative" => $description,
             "reference" => $description,
         ];
 
         $response = $this->makeRequest($this->apiUrl, $params);
-        $jsonDecoded = json_decode($response, true);
         
-        if (!empty($jsonDecoded) && !$jsonDecoded['error']) {
-            if (isset($jsonDecoded['status']) && $jsonDecoded['status'] == "PENDING") {
-                $reference = $jsonDecoded['reference_code'];
+        if (!empty($response) && !$response['error']) {
+            if (isset($response['status']) && $response['status'] == "PENDING") {
+                $reference = $response['reference_code'];
                 $status = $this->checkStatus($reference);
                 
                 while ($status == "PENDING") {
@@ -69,10 +80,9 @@ class BlinkPayService
         ];
 
         $response = $this->makeRequest($this->apiUrl, $params);
-        $jsonDecoded = json_decode($response, true);
         
-        if (!empty($jsonDecoded) && !$jsonDecoded['error'] && isset($jsonDecoded['status'])) {
-            return $jsonDecoded['status'];
+        if (!empty($response) && !$response['error'] && isset($response['status'])) {
+            return $response['status'];
         }
         
         return "FAILED";
