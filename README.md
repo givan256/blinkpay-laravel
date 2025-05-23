@@ -37,21 +37,14 @@ BLINK_PAYMENTS_CONVERT_TO_UGX=false
 ### Mobile Money Payments
 
 ```php
-use BlinkPay\Laravel\BlinkPayGateway;
+use BlinkPay\Laravel\Facades\BlinkPay;
 
 class PaymentController extends Controller
-{
-    protected $blinkPay;
-    
-    public function __construct(BlinkPayGateway $blinkPay)
-    {
-        $this->blinkPay = $blinkPay;
-    }
-    
+{    
     public function processMobileMoneyPayment(Request $request)
     {
         try {
-            $result = $this->blinkPay->processPayment([
+            $result = BlinkPay::mobileMoney([
                 'order_id' => $request->order_id,
                 'amount' => $request->amount,
                 'currency' => $request->currency,
@@ -69,21 +62,14 @@ class PaymentController extends Controller
 ### Credit Card Payments
 
 ```php
-use BlinkPay\Laravel\BlinkPayGateway;
+use BlinkPay\Laravel\Facades\BlinkPay;
 
 class PaymentController extends Controller
-{
-    protected $blinkPay;
-    
-    public function __construct(BlinkPayGateway $blinkPay)
-    {
-        $this->blinkPay = $blinkPay;
-    }
-    
+{    
     public function processCreditCardPayment(Request $request)
     {
         try {
-            $result = $this->blinkPay->processCreditCardPayment([
+            $result = BlinkPay::processCreditCardPayment([
                 'order_id' => $request->order_id,
                 'amount' => $request->amount,
                 'currency' => $request->currency,
@@ -106,28 +92,44 @@ class PaymentController extends Controller
 }
 ```
 
-## Supported Payment Methods
+## Features
 
 ### Mobile Money
 - Supports various mobile money providers
-- Automatic phone number validation
-- Currency conversion to UGX (optional)
+- Automatic phone number validation and formatting
+- Currency conversion to UGX (configurable)
+- Minimum amount validation (500 UGX)
+- Transaction status checking
 
 ### Credit Cards
 - Supports major card types (Visa, Mastercard, Amex, Discover)
 - Card number validation using Luhn algorithm
 - Automatic card type detection
 - Billing address support
-- Currency conversion to UGX (optional)
+- Currency conversion to UGX (configurable)
+
+## Currency Conversion
+
+The package supports automatic currency conversion to UGX. This can be enabled by setting `BLINK_PAYMENTS_CONVERT_TO_UGX=true` in your `.env` file.
+
+When enabled:
+- All amounts will be converted to UGX using the configured exchange rate
+- Minimum amount validation (500 UGX) is automatically applied
+- The exchange rate can be configured using `BLINK_PAYMENTS_DEFAULT_EXCHANGE_RATE`
+- Custom exchange rates can be implemented using `BLINK_PAYMENTS_EXCHANGE_RATE_KEY`
 
 ## Response Format
 
-Both payment methods return a response in the following format:
+All payment methods return a response in the following format:
 
 ```json
 {
     "status": "SUCCESS|FAILED|PENDING",
-    "message": "Response message from the payment gateway"
+    "message": {
+        "reference_code": "transaction_reference",
+        "status": "transaction_status",
+        "details": "Additional transaction details"
+    }
 }
 ```
 
@@ -137,12 +139,14 @@ The package throws exceptions for various error conditions:
 
 - Invalid phone number format
 - Invalid credit card number
-- Unsupported card type
+- Minimum amount requirement not met (500 UGX)
+- Currency conversion errors
 - API communication errors
+- Invalid or missing configuration
+
+All exceptions include detailed error messages to help identify the issue.
 
 ## Testing
-
-Run the test suite:
 
 ```bash
 ./vendor/bin/phpunit
@@ -150,19 +154,9 @@ Run the test suite:
 
 ## Security
 
-- All sensitive data is handled securely
-- Credit card validation before processing
-- Phone number validation and formatting
-- Secure API communication
-
-## Contributing
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## Security
-
-If you discover any security related issues, please email security@yourdomain.com instead of using the issue tracker.
+If you discover any security related issues, please email security@blink.co.ug instead of using the issue tracker.
 
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+```
