@@ -3,6 +3,7 @@
 namespace BlinkPay\Laravel;
 
 use Illuminate\Support\ServiceProvider;
+use BlinkPay\Laravel\Facades\BlinkPay;
 
 class BlinkPayServiceProvider extends ServiceProvider
 {
@@ -25,6 +26,8 @@ class BlinkPayServiceProvider extends ServiceProvider
                 config('blinkpay.convert_to_ugx', false)
             );
         });
+
+        $this->app->alias(BlinkPayGateway::class, 'blinkpay');
     }
 
     /**
