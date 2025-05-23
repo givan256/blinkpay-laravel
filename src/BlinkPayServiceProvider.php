@@ -17,7 +17,16 @@ class BlinkPayServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton(BlinkPayService::class, function ($app) {
-            return new BlinkPayService();
+            return new BlinkPayService([
+                'username' => config('blinkpay.username'),
+                'password' => config('blinkpay.password'),
+                'api_url' => config('blinkpay.api_url'),
+                'banking_api_url' => config('blinkpay.banking_api_url'),
+                'merchant_id' => config('blinkpay.merchant_id'),
+                'merchant_password' => config('blinkpay.merchant_password'),
+                'default_exchange_rate' => config('blinkpay.default_exchange_rate'),
+                'exchange_rate_key' => config('blinkpay.exchange_rate_key')
+            ]);
         });
 
         $this->app->singleton(BlinkPayGateway::class, function ($app) {
