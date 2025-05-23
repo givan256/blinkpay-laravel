@@ -138,14 +138,36 @@ class BlinkPayService
         return json_decode($result, true);
     }
 
+    protected function formatPhoneNumber($phone)
+    {
+        // Remove any non-numeric characters
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        
+        // If number starts with 0, replace with 256
+        if (substr($phone, 0, 1) === '0') {
+            $phone = '256' . substr($phone, 1);
+        }
+        
+        // If number starts with +, remove it
+        if (substr($phone, 0, 1) === '+') {
+            $phone = substr($phone, 1);
+        }
+        
+        return $phone;
+    }
+
     public function processPayment($orderData)
     {
+        if (!isset($orderData['phone_number'])) {
+            throw new \Exception('Phone number is required for mobile money payment');
+        }
+
         $data = [
             'username' => $this->username,
             'password' => $this->password,
             'merchant_id' => $this->merchantId,
             'merchant_password' => $this->merchantPassword,
-            'phone_number' => $orderData['phone_number'],
+            'phone_number' => $this->formatPhoneNumber($orderData['phone_number']),
             'amount' => $orderData['amount'],
             'narration' => $orderData['narration'] ?? 'Payment',
             'exchange_rate' => $this->defaultExchangeRate
@@ -164,7 +186,7 @@ class BlinkPayService
             'amount' => $data['amount'],
             'email' => $data['email'],
             'name' => $data['name'],
-            'phone_number' => $data['phone_number'],
+            'phone_number' => isset($data['phone_number']) ? $this->formatPhoneNumber($data['phone_number']) : '',
             'narration' => $data['narration'] ?? 'Payment',
             'cancel_redirect_url' => $data['cancel_redirect_url'],
             'success_redirect_url' => $data['success_redirect_url'],
